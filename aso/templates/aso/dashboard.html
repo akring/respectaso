@@ -946,6 +946,24 @@ function clearAllFilters() {
     window.location.href = qs ? `?${qs}` : '{% url "aso:dashboard" %}';
 }
 
+// Render all pending download charts in the history table
+// Called by initHistoryFilters() and from DOMContentLoaded
+function renderHistoryDownloadCharts() {
+    if (typeof window.renderDownloadChart !== 'function') return;
+    document.querySelectorAll('.dl-chart-pending').forEach(function(el) {
+        try {
+            var estimates = JSON.parse(el.getAttribute('data-estimates'));
+            var appRankStr = el.getAttribute('data-app-rank');
+            var appRank = appRankStr ? parseInt(appRankStr, 10) : null;
+            if (isNaN(appRank)) appRank = null;
+            el.innerHTML = window.renderDownloadChart(estimates, appRank);
+            el.classList.remove('dl-chart-pending');
+        } catch (e) {
+            // Skip charts with invalid data
+        }
+    });
+}
+
 // Reusable filter initialization — called on page load and after history refresh
 function initHistoryFilters() {
     // Insight multi-select dropdown toggle
@@ -1377,23 +1395,6 @@ window.renderRankingTiers = function(tiers) {
         </div>`;
 };
 
-// Render all pending download charts in the history table
-// Called by initHistoryFilters() on page load and after refreshHistorySection()
-function renderHistoryDownloadCharts() {
-    document.querySelectorAll('.dl-chart-pending').forEach(function(el) {
-        try {
-            var estimates = JSON.parse(el.getAttribute('data-estimates'));
-            var appRankStr = el.getAttribute('data-app-rank');
-            var appRank = appRankStr ? parseInt(appRankStr, 10) : null;
-            if (isNaN(appRank)) appRank = null;
-            el.innerHTML = window.renderDownloadChart(estimates, appRank);
-            el.classList.remove('dl-chart-pending');
-        } catch (e) {
-            // Skip charts with invalid data
-        }
-    });
-}
-
 // --- Search Form & Result Cards ---
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('search-form');
@@ -1435,6 +1436,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const qs = params.toString();
         window.location.href = qs ? `?${qs}` : '{% url "aso:dashboard" %}';
     });
+
+    // Render download charts now that renderDownloadChart is defined
+    renderHistoryDownloadCharts();
 
     // Restore country filter from localStorage if no ?country= param
     const historyCountryFilter = document.getElementById('history-country-filter');

@@ -231,6 +231,10 @@
         <!-- Filter Bar -->
         <div id="filter-bar" class="mb-3">
             <div class="flex items-center gap-2 flex-wrap">
+                <div class="relative">
+                    <svg class="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    <input type="text" id="keyword-search" placeholder="Search keywords…" value="{{ search_q|default:'' }}" class="text-xs bg-slate-700/50 text-white placeholder-slate-500 border border-white/10 rounded-lg pl-8 pr-3 py-1.5 w-44 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                </div>
                 <button id="filter-toggle" onclick="toggleFilterPanel()" class="text-xs bg-slate-700/50 text-slate-300 hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
                     Filters
@@ -668,6 +672,7 @@ function exportHistoryCSV() {
     params.getAll('insight').forEach(v => exportParams.append('insight', v));
     if (params.get('pop_min')) exportParams.set('pop_min', params.get('pop_min'));
     if (params.get('diff_max')) exportParams.set('diff_max', params.get('diff_max'));
+    if (params.get('q')) exportParams.set('q', params.get('q'));
     const qs = exportParams.toString();
     const url = '{% url "aso:export_history_csv" %}' + (qs ? '?' + qs : '');
     fetch(url)
@@ -903,6 +908,7 @@ function applyServerFilters() {
     params.delete('insight');
     params.delete('pop_min');
     params.delete('diff_max');
+    params.delete('q');
     params.delete('page');
 
     // Insight checkboxes
@@ -920,11 +926,17 @@ function applyServerFilters() {
     const diffVal = document.getElementById('filter-diff-max');
     if (diffVal && diffVal.value) params.set('diff_max', diffVal.value);
 
+    // Keyword text search
+    const qInput = document.getElementById('keyword-search');
+    const qVal = qInput ? qInput.value.trim() : '';
+    if (qVal) params.set('q', qVal);
+
     // Persist filter state so it survives tab switches
     const filterState = {};
     if (insights.length) filterState.insight = insights;
     if (popVal && popVal.value) filterState.pop_min = popVal.value;
     if (diffVal && diffVal.value) filterState.diff_max = diffVal.value;
+    if (qVal) filterState.q = qVal;
     if (Object.keys(filterState).length) {
         sessionStorage.setItem('dash_filters', JSON.stringify(filterState));
     } else {
@@ -941,6 +953,7 @@ function clearAllFilters() {
     params.delete('insight');
     params.delete('pop_min');
     params.delete('diff_max');
+    params.delete('q');
     params.delete('page');
     const qs = params.toString();
     window.location.href = qs ? `?${qs}` : '{% url "aso:dashboard" %}';
@@ -987,6 +1000,14 @@ function initHistoryFilters() {
     if (popInput) popInput.addEventListener('change', applyServerFilters);
     if (diffInput) diffInput.addEventListener('change', applyServerFilters);
 
+    // Keyword text search — apply on Enter key
+    const qInput = document.getElementById('keyword-search');
+    if (qInput) {
+        qInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); applyServerFilters(); }
+        });
+    }
+
     // Country filter — must be re-attached after refreshHistorySection replaces the DOM
     const historyCountryFilter = document.getElementById('history-country-filter');
     if (historyCountryFilter) {
@@ -1027,7 +1048,7 @@ initHistoryFilters();
 // Restore saved filters when returning to Dashboard without filter params in URL
 (function restoreFiltersFromSession() {
     const params = new URLSearchParams(window.location.search);
-    if (params.has('insight') || params.has('pop_min') || params.has('diff_max')) return;
+    if (params.has('insight') || params.has('pop_min') || params.has('diff_max') || params.has('q')) return;
     const saved = sessionStorage.getItem('dash_filters');
     if (!saved) return;
     try {
@@ -1037,6 +1058,7 @@ initHistoryFilters();
         if (state.insight) state.insight.forEach(v => params.append('insight', v));
         if (state.pop_min) params.set('pop_min', state.pop_min);
         if (state.diff_max) params.set('diff_max', state.diff_max);
+        if (state.q) params.set('q', state.q);
         params.delete('page');
         window.location.replace(`?${params.toString()}`);
     } catch (_) { sessionStorage.removeItem('dash_filters'); }

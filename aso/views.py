@@ -82,6 +82,7 @@ def dashboard_view(request):
     insight_filter = request.GET.getlist("insight")
     pop_min_param = request.GET.get("pop_min", "")
     diff_max_param = request.GET.get("diff_max", "")
+    search_q = request.GET.get("q", "").strip()
 
     try:
         pop_min = int(pop_min_param) if pop_min_param else None
@@ -131,6 +132,10 @@ def dashboard_view(request):
 
     # Total unfiltered count (before insight/pop/diff filters)
     total_unfiltered_count = results_qs.count()
+
+    # Apply keyword text search
+    if search_q:
+        results_qs = results_qs.filter(keyword__keyword__icontains=search_q)
 
     # Apply popularity / difficulty filters
     if pop_min is not None:
@@ -277,7 +282,7 @@ def dashboard_view(request):
             result.rank_delta = None
 
     # Determine if any filters are active
-    has_filters = bool(valid_insights or pop_min is not None or diff_max is not None)
+    has_filters = bool(valid_insights or pop_min is not None or diff_max is not None or search_q)
 
     return render(
         request,
@@ -305,6 +310,7 @@ def dashboard_view(request):
             "selected_insights": valid_insights,
             "selected_pop_min": pop_min,
             "selected_diff_max": diff_max,
+            "search_q": search_q,
             "has_filters": has_filters,
         },
     )
@@ -946,6 +952,7 @@ def export_history_csv_view(request):
     insight_filter = request.GET.getlist("insight")
     pop_min_raw = request.GET.get("pop_min")
     diff_max_raw = request.GET.get("diff_max")
+    search_q = request.GET.get("q", "").strip()
 
     pop_min = int(pop_min_raw) if pop_min_raw and pop_min_raw.isdigit() else None
     diff_max = int(diff_max_raw) if diff_max_raw and diff_max_raw.isdigit() else None
@@ -972,6 +979,10 @@ def export_history_csv_view(request):
         .filter(id__in=latest_ids)
         .select_related("keyword", "keyword__app")
     )
+
+    # Apply keyword text search
+    if search_q:
+        results_qs = results_qs.filter(keyword__keyword__icontains=search_q)
 
     # Apply popularity / difficulty filters
     if pop_min is not None:

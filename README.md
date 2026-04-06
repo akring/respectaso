@@ -152,12 +152,11 @@ A 7-factor weighted system that estimates how hard it is to rank:
 
 ### Download Estimates
 
-A 4-stage pipeline estimates daily downloads per ranking position:
+A 3-stage pipeline estimates daily downloads per ranking position:
 
-1. **Popularity → Daily Searches** — piecewise-linear mapping calibrated against real App Store observations
+1. **Popularity → Daily Searches** — piecewise-linear mapping calibrated against real App Store observations, scaled by country market size
 2. **Position → Tap-Through Rate** — power-law decay from position #1 (30%) to position #20 (0.07%)
 3. **Tap → Install Conversion** — range of 5% (unknown indie app, weak listing) to 20% (category leader with strong brand)
-4. **Market-Size Scaling** — search volumes are calibrated for the US App Store; other countries are scaled by relative market size
 
 Results are shown as conservative–optimistic ranges per position, with tier breakdowns for Top 5, Top 6–10, and Top 11–20.
 

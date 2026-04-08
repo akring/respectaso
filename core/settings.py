@@ -32,6 +32,7 @@ ALLOWED_HOSTS = [
     "127.0.0.1",
     "0.0.0.0",
     "respectaso.private",
+    "ALLOWED_HOSTS",
 ]
 
 INSTALLED_APPS = [

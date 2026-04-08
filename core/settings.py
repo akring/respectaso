@@ -20,20 +20,23 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 env_file = BASE_DIR / ".env"
 if not env_file.exists():
     env_file = DATA_DIR / ".env"
+
 if env_file.exists():
     load_dotenv(env_file)
 
-SECRET_KEY = os.environ.get("SECRET_KEY", "") or "django-insecure-dev-key-change-me-in-production"
 
+def env_list(name: str, default: str = "") -> list[str]:
+    raw = os.environ.get(name, default)
+    return [item.strip() for item in raw.split(",") if item.strip()]
+
+
+SECRET_KEY = os.environ.get("SECRET_KEY", "") or "django-insecure-dev-key-change-me-in-production"
 DEBUG = os.environ.get("DEBUG", "True").lower() in ("true", "1", "yes")
 
-ALLOWED_HOSTS = [
-    "localhost",
-    "127.0.0.1",
-    "0.0.0.0",
-    "respectaso.private",
+ALLOWED_HOSTS = env_list(
     "ALLOWED_HOSTS",
-]
+    "localhost,127.0.0.1,0.0.0.0,respectaso.private,.traefik.me",
+)
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -95,20 +98,25 @@ STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
-# CSRF trusted origins for local access
-CSRF_TRUSTED_ORIGINS = [
-    "http://localhost",
-    "http://127.0.0.1",
-    "http://respectaso.private",
-    "http://localhost:9090",
-    "http://127.0.0.1:9090",
-    "http://respectaso.private:9090",
-]
+# CSRF trusted origins
+CSRF_TRUSTED_ORIGINS = env_list(
+    "CSRF_TRUSTED_ORIGINS",
+    ",".join(
+        [
+            "http://localhost",
+            "http://127.0.0.1",
+            "http://respectaso.private",
+            "http://localhost:9090",
+            "http://127.0.0.1:9090",
+            "http://respectaso.private:9090",
+            "http://*.traefik.me",
+            "https://*.traefik.me",
+        ]
+    ),
+)
 
-# Native app: allow any localhost port (Gunicorn binds to a random port)
+# Native app: allow common localhost ports (Gunicorn binds to a random port)
 if IS_NATIVE_APP:
-    import re
-    # Add a wildcard-like set of common ports for CSRF trust
     for p in range(8000, 8100):
         CSRF_TRUSTED_ORIGINS.append(f"http://127.0.0.1:{p}")
         CSRF_TRUSTED_ORIGINS.append(f"http://localhost:{p}")
@@ -130,7 +138,7 @@ if IS_NATIVE_APP:
                 "level": "WARNING",
                 "class": "logging.handlers.RotatingFileHandler",
                 "filename": str(_log_file),
-                "maxBytes": 1_048_576,  # 1 MB
+                "maxBytes": 1_048_576,
                 "backupCount": 1,
                 "formatter": "simple",
             },
